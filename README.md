@@ -7,7 +7,7 @@ An efficient utility library designed to assist you in logging to `Files`. It of
 
 <p align="center">
 	<kbd>
-		<img src="assets/demo.gif" alt="Device Logger" width="380" height="633">
+		<img src="assets/demo.gif" alt="Device Logger" width="480" height="985">
 	</kbd>
 </p>
 
