@@ -65,7 +65,7 @@ afterEvaluate {
                     }
                 }
 
-                groupId = "net.rakjarz"
+                groupId = "net.rakjarz.corn"
                 artifactId = "corn"
                 version = computeVersionName()
 
