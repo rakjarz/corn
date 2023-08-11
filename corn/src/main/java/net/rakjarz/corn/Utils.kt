@@ -26,7 +26,7 @@ internal object Utils {
         return file
     }
 
-    fun writeLogsToFile(file: File, logs: List<Message>, format: LogFormat, indicate: Boolean) {
+    fun writeLogsToFile(file: File, logs: List<LogData>, format: LogFormat, indicate: Boolean) {
         FileWriter(file, true).use { fw ->
             logs.forEach { log -> fw.append(format.format(log)) }
 
@@ -38,8 +38,8 @@ internal object Utils {
         }
     }
 
-    private fun lineBreakInfoLog(): Message {
-        return Message(
+    private fun lineBreakInfoLog(): LogData {
+        return LogData(
             level = Level.VERBOSE,
             tag = "Corn",
             message = "Flushing logs -- total processed",
@@ -48,13 +48,8 @@ internal object Utils {
     }
 
     private val LOG_FILE_TIME_FORMAT = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US)
-    fun compress(file: File, logsDir: String): Boolean {
+    fun compress(file: File, compressed: File): Boolean {
         try {
-            val compressed = File(
-                file.parentFile?.absolutePath ?: logsDir,
-                "${file.name.substringBeforeLast(".")}_${LOG_FILE_TIME_FORMAT.format(Date())}.gz"
-            )
-
             BufferedInputStream(FileInputStream(file)).use { fis ->
                 BufferedOutputStream(FileOutputStream(compressed)).use { fos ->
                     GZIPOutputStream(fos).use { gzos ->
@@ -77,5 +72,9 @@ internal object Utils {
         }
 
         return true
+    }
+
+    fun getCompressedFile(logsDir: String, prefix: String): File {
+        return File(logsDir, "${prefix}_${LOG_FILE_TIME_FORMAT.format(Date())}.gz")
     }
 }

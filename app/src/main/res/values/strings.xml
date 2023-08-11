@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">Corn</string>
+    <string name="write">Write</string>
+    <string name="show">Show</string>
+    <string name="report">Report</string>
+    <string name="delete">Delete</string>
+    <string name="enter_log_here">Enter log here</string>
+    <string name="w100k">100K</string>
+    <string name="show_all">Show All</string>
 </resources>

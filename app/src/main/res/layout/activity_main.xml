@@ -6,10 +6,12 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
-    <TextView
+    <androidx.appcompat.widget.AppCompatEditText
+        android:id="@+id/edt_log_input"
+        android:hint="@string/enter_log_here"
+        android:paddingVertical="8dp"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Hello World!" />
+        android:layout_height="wrap_content" />
 
     <androidx.appcompat.widget.LinearLayoutCompat
         android:gravity="center"
@@ -17,18 +19,30 @@
         android:layout_height="wrap_content">
 
         <Button
-            android:id="@+id/btn_java_io"
-            android:text="Java IO"
+            android:id="@+id/btn_write"
+            android:text="@string/write"
+            android:layout_weight="1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
 
-        <View
-            android:layout_width="20dp"
-            android:layout_height="0dp" />
+        <Button
+            android:id="@+id/btn_show"
+            android:text="@string/show"
+            android:layout_weight="1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
 
         <Button
-            android:id="@+id/btn_generate"
-            android:text="Generate"
+            android:id="@+id/btn_report"
+            android:text="@string/report"
+            android:layout_weight="1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <Button
+            android:id="@+id/btn_delete"
+            android:text="@string/delete"
+            android:layout_weight="1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
 
@@ -40,21 +54,28 @@
         android:layout_height="wrap_content">
 
         <Button
-            android:id="@+id/btn_file"
-            android:text="10K File"
+            android:id="@+id/btn_stress"
+            android:text="@string/w100k"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
 
-        <View
-            android:layout_width="20dp"
-            android:layout_height="0dp" />
-
         <Button
-            android:id="@+id/btn_sql"
-            android:text="10K SQLite"
+            android:id="@+id/btn_show_all"
+            android:text="@string/show_all"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
 
     </androidx.appcompat.widget.LinearLayoutCompat>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <TextView
+            android:id="@+id/tv_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </ScrollView>
 
 </LinearLayout>

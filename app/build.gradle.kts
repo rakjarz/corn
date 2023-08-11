@@ -38,8 +38,6 @@ android {
 dependencies {
     implementation(project(path = ":corn"))
 
-    implementation("com.github.rakjarz:hyperlog-android:1.0.4")
-
     implementation("androidx.core:core-ktx:1.10.1")
     implementation("androidx.appcompat:appcompat:1.6.1")
     testImplementation("junit:junit:4.13.2")

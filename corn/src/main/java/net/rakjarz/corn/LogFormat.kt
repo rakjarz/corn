@@ -1,5 +1,5 @@
 package net.rakjarz.corn
 
 interface LogFormat {
-    fun format(log: Message): String
+    fun format(log: LogData): String
 }
