@@ -9,21 +9,12 @@ import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
-import java.io.BufferedInputStream
-import java.io.BufferedOutputStream
 import java.io.File
-import java.io.FileInputStream
 import java.io.FileNotFoundException
-import java.io.FileOutputStream
-import java.io.FileWriter
-import java.io.IOException
 import java.io.PrintWriter
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.zip.GZIPOutputStream
 
 enum class Level {
     VERBOSE,
@@ -44,31 +35,38 @@ data class Message(
 object Corn {
     private val logBuffer = PublishSubject.create<Message>()
     private val disposables = CompositeDisposable()
+    private var formatter: LogFormat = DefaultLogFormat()
 
     /**
      * ~1.66MB/~450kb gzipped.
      */
     private const val LOG_FILE_MAX_SIZE_THRESHOLD = 5 * 1024 * 1024
-    private lateinit var filePath: String
+    // Default log retention 90 days
+    private val DEFAULT_LOG_FILE_RETENTION = TimeUnit.DAYS.toMillis(90)
     private const val LOG_FILE_NAME = "insights.log"
-    private val LOG_FILE_RETENTION = TimeUnit.DAYS.toMillis(14)
-    private val LOG_FILE_TIME_FORMAT = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US)
-    private val LOG_LINE_TIME_FORMAT = SimpleDateFormat("MMM-dd HH:mm:ss", Locale.US)
+
+    private lateinit var logsDir: String
+    private var retentionMillis: Long = DEFAULT_LOG_FILE_RETENTION
 
     private var flush = BehaviorSubject.create<Long>()
     private var flushCompleted = BehaviorSubject.create<Long>()
 
-    @JvmStatic fun initialize(
-        context: Context
+    @JvmStatic
+    @JvmOverloads
+    fun initialize(
+        context: Context,
+        retentionMillis: Long = DEFAULT_LOG_FILE_RETENTION,
+        logFormat: LogFormat = DefaultLogFormat()
     ) {
-        filePath = try {
+        this.retentionMillis = retentionMillis
+        this.formatter = logFormat
+
+        logsDir = try {
             getLogsDirectoryFromPath(context.filesDir.absolutePath)
         } catch (e: FileNotFoundException) {
             // Fallback to default path
             context.filesDir.absolutePath
         }
-
-        // Plant Timber Here
     }
 
     private fun getLogsDirectoryFromPath(fileDir: String): String {
@@ -81,8 +79,7 @@ object Corn {
     }
 
     @JvmStatic fun cleanup() {
-        flush()
-        disposables.clear()
+        flush { disposables.clear() }
     }
 
     fun flush(onComplete: (() -> Unit)? = null) {
@@ -104,13 +101,13 @@ object Corn {
     }
 
     fun rotateLogs() {
-        rotateLogs(filePath, LOG_FILE_NAME)
+        rotateLogs(logsDir, LOG_FILE_NAME)
     }
 
     private fun rotateLogs(path: String, fileName: String) {
-        val file = getFile(path, fileName)
+        val file = Utils.getFile(path, fileName)
 
-        if (!compress(file)) {
+        if (!Utils.compress(file, logsDir)) {
             // Unable to compress file
             return
         }
@@ -124,96 +121,8 @@ object Corn {
         file.parentFile?.listFiles()
             ?.filter {
                 it.extension.lowercase(Locale.ROOT) == "gz"
-                        && it.lastModified() + LOG_FILE_RETENTION < currentTime
+                        && it.lastModified() + DEFAULT_LOG_FILE_RETENTION < currentTime
             }?.map { it.delete() }
-    }
-
-    private fun compress(file: File): Boolean {
-        try {
-            val compressed = File(
-                file.parentFile?.absolutePath ?: filePath,
-                "${file.name.substringBeforeLast(".")}_${LOG_FILE_TIME_FORMAT.format(Date())}.gz"
-            )
-
-            BufferedInputStream(FileInputStream(file)).use { fis ->
-                BufferedOutputStream(FileOutputStream(compressed)).use { fos ->
-                    GZIPOutputStream(fos).use { gzos ->
-                        val buffer = ByteArray(1024)
-                        var length: Int
-
-                        while (fis.read(buffer).also { length = it } != -1) {
-                            gzos.write(buffer, 0, length)
-                        }
-
-                        gzos.finish()
-                        gzos.close()
-                    }
-                }
-            }
-        } catch (e: IOException) {
-            logException(e)
-
-            return false
-        }
-
-        return true
-    }
-
-    private fun logException(e: Exception) {
-        println("Corn err: ${e.message}")
-    }
-
-    private fun getFile(path: String, name: String): File {
-        val file = File(path, name)
-        if (!file.exists() && !file.createNewFile()) {
-            throw IOException("Unable to load log file")
-        }
-
-        if (!file.canWrite()) {
-            throw IOException("Log file not writable")
-        }
-
-        return file
-    }
-
-    init {
-        val processed = AtomicInteger(0)
-
-        logBuffer
-            .observeOn(Schedulers.computation())
-            .doOnEach { if (processed.incrementAndGet() % 20 == 0) flush() }
-            .buffer(flush.mergeWith(Observable.interval(5, TimeUnit.SECONDS)))
-            .toFlowable(BackpressureStrategy.BUFFER)
-            .subscribeOn(Schedulers.io())
-            .subscribe {
-                try {
-                    // Open file
-                    val f = getFile(filePath, LOG_FILE_NAME)
-
-                    // Write to log
-                    FileWriter(f, true).use { fw ->
-                        // Write log lines to the file
-                        it.forEach { (level, tag, message, timestamp) -> fw.append("${LOG_LINE_TIME_FORMAT.format(Date(timestamp))}\t${tag}\t${level}\t$message\n") }
-
-                        // Write a line indicating the number of log lines proceed
-//                        fw.append("${LOG_LINE_TIME_FORMAT.format(Date())}\t${Level.VERBOSE}\tFlushing logs -- total processed: $processed\n")
-
-                        fw.flush()
-                    }
-
-                    // Validate file size
-                    flushCompleted.onNext(f.length())
-                } catch (e: Exception) {
-                    logException(e)
-                }
-            }
-            .also { disposables.add(it) }
-
-        flushCompleted
-            .subscribeOn(Schedulers.io())
-            .filter { fileSize -> fileSize > LOG_FILE_MAX_SIZE_THRESHOLD }
-            .subscribe { rotateLogs() }
-            .also { disposables.add(it) }
     }
 
     fun log(level: Level, tag: String, message: String? = "", throwable: Throwable? = null) {
@@ -228,4 +137,34 @@ object Corn {
         val log = Message(level = level, tag = tag, message = msg, timestamp = time)
         logBuffer.onNext(log)
     }
+
+    init {
+        val processed = AtomicInteger(0)
+
+        logBuffer
+            .observeOn(Schedulers.computation())
+            .doOnEach { if (processed.incrementAndGet() % 20 == 0) flush() }
+            .buffer(flush.mergeWith(Observable.interval(5, TimeUnit.SECONDS)))
+            .toFlowable(BackpressureStrategy.BUFFER)
+            .subscribeOn(Schedulers.io())
+            .subscribe { logs ->
+                try {
+                    val f = Utils.getFile(logsDir, LOG_FILE_NAME)
+                    Utils.writeLogsToFile(f, logs, formatter, true)
+
+                    flushCompleted.onNext(f.length())
+                } catch (e: Exception) {
+                    println("Corn: flush err=${e.message}")
+                }
+            }
+            .also { disposables.add(it) }
+
+        flushCompleted
+            .subscribeOn(Schedulers.io())
+            .filter { fileSize -> fileSize > LOG_FILE_MAX_SIZE_THRESHOLD }
+            .subscribe { rotateLogs() }
+            .also { disposables.add(it) }
+    }
+
+
 }
