@@ -29,6 +29,7 @@ class MainActivity : AppCompatActivity() {
 
             Log.d(TAG, message)
             Corn.log(Level.INFO, TAG, message)
+            showLogs(20)
 //            Toast.makeText(this, "OK", Toast.LENGTH_SHORT).show()
         }
 
@@ -40,6 +41,7 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btn_delete).setOnClickListener {
             Corn.clear(true)
+            content?.text = ""
         }
         findViewById<Button>(R.id.btn_stress).setOnClickListener {
             stress100k()
@@ -72,18 +74,18 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "Success ${t2 - t1}ms", Toast.LENGTH_SHORT).show()
     }
 
-    private fun showLogs() {
+    private fun showLogs(limit: Int = 200) {
         Corn.flush {
             runOnUiThread {
                 val t1 = System.currentTimeMillis()
-                val logs = Corn.getLogsAsStringList()
+                val logs = Corn.getLogsAsStringList(0, limit)
                 val t2 = System.currentTimeMillis()
                 println("finish show log at: ${t2 - t1}ms")
                 Toast.makeText(this, "Success ${t2 - t1}ms", Toast.LENGTH_SHORT).show()
 
                 content?.let { it.text = "" }
 
-                for (i in 0 until logs.size.coerceAtMost(500)) {
+                for (i in 0 until logs.size.coerceAtMost(limit)) {
                     content?.append(logs[i])
                     content?.append(System.lineSeparator())
                 }
