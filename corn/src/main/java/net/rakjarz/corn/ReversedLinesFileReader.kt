@@ -8,8 +8,7 @@ import java.io.UnsupportedEncodingException
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 
-class ReversedLinesFileReader
-constructor(
+class ReversedLinesFileReader(
     file: File,
     private val blockSize: Int = 4096,
     private val encoding: Charset = Charset.defaultCharset()
@@ -27,6 +26,7 @@ constructor(
         val charset = encoding
         val charsetEncoder = charset.newEncoder()
         val maxBytesPerChar = charsetEncoder.maxBytesPerChar()
+
         byteDecrement = if (maxBytesPerChar == 1f) {
             // all one byte encodings are no problem
             1
@@ -34,14 +34,17 @@ constructor(
             // UTF-8 works fine out of the box, for multibyte sequences a second UTF-8 byte can never be a newline byte
             // http://en.wikipedia.org/wiki/UTF-8
             1
-        } else if (// Same as for UTF-8
-        // http://www.herongyang.com/Unicode/JIS-Shift-JIS-Encoding.html
-        // Windows code page 932 (Japanese)
-        // Windows code page 949 (Korean)
-        // Windows code page 936 (Simplified Chinese)
-            charset === Charset.forName("Shift_JIS") || charset === Charset.forName("windows-31j") || charset === Charset.forName(
-                "x-windows-949"
-            ) || charset === Charset.forName("gbk") || charset === Charset.forName("x-windows-950")
+        } else if (
+            // Same as for UTF-8
+            // http://www.herongyang.com/Unicode/JIS-Shift-JIS-Encoding.html
+            // Windows code page 932 (Japanese)
+            // Windows code page 949 (Korean)
+            // Windows code page 936 (Simplified Chinese)
+            charset === Charset.forName("Shift_JIS")
+            || charset === Charset.forName("windows-31j")
+            || charset === Charset.forName("x-windows-949")
+            || charset === Charset.forName("gbk")
+            || charset === Charset.forName("x-windows-950")
         ) { // Windows code page 950 (Traditional Chinese)
             1
         } else if (charset === StandardCharsets.UTF_16BE || charset === StandardCharsets.UTF_16LE) {
@@ -49,26 +52,19 @@ constructor(
             // however byte order has to be specified
             2
         } else if (charset === StandardCharsets.UTF_16) {
-            throw UnsupportedEncodingException(
-                "For UTF-16, you need to specify the byte order (use UTF-16BE or " +
-                        "UTF-16LE)"
-            )
+            throw UnsupportedEncodingException("For UTF-16, you need to specify the byte order (use UTF-16BE or UTF-16LE)")
         } else {
-            throw UnsupportedEncodingException(
-                "Encoding " + encoding + " is not supported yet (feel free to " +
-                        "submit a patch)"
-            )
+            throw UnsupportedEncodingException("Encoding $encoding is not supported yet (feel free to submit a patch)")
         }
 
         // NOTE: The new line sequences are matched in the order given, so it is important that \r\n is BEFORE \n
         newLineSequences = arrayOf(
-            "\r\n".toByteArray(encoding), "\n".toByteArray(
-                encoding
-            ), "\r".toByteArray(encoding)
+            "\r\n".toByteArray(encoding),
+            "\n".toByteArray(encoding),
+            "\r".toByteArray(encoding)
         )
         avoidNewlineSplitBufferSize = newLineSequences[0].size
 
-        // Open file
         randomAccessFile = RandomAccessFile(file, "r")
         totalByteLength = randomAccessFile.length()
         var lastBlockLength = (totalByteLength % blockSize).toInt()
@@ -141,8 +137,9 @@ constructor(
                 val countRead = randomAccessFile.read(data, 0, length)
                 check(countRead == length) { "Count of requested bytes and actually read bytes don't match" }
             }
+
             // copy left over part into data arr
-            if (leftOverOfLastFilePart != null) {
+            leftOverOfLastFilePart?.let {
                 System.arraycopy(
                     leftOverOfLastFilePart,
                     0,
@@ -151,6 +148,7 @@ constructor(
                     leftOverOfLastFilePart.size
                 )
             }
+
             currentLastBytePos = data.size - 1
             leftOver = null
         }
@@ -164,9 +162,9 @@ constructor(
         @Throws(IOException::class)
         fun rollOver(): FilePart? {
             check(currentLastBytePos <= -1) {
-                ("Current currentLastCharPos unexpectedly positive... "
-                        + "last readLine() should have returned something! currentLastCharPos=" + currentLastBytePos)
+                ("Current currentLastCharPos unexpectedly positive... last readLine() should have returned something! currentLastCharPos=$currentLastBytePos")
             }
+
             return if (no > 1) {
                 FilePart(no - 1, blockSize, leftOver)
             } else {
