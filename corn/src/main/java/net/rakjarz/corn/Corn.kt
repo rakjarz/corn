@@ -3,6 +3,7 @@
 package net.rakjarz.corn
 
 import android.content.Context
+import android.util.Log
 import io.reactivex.rxjava3.core.BackpressureStrategy
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
@@ -25,7 +26,20 @@ enum class Level {
     INFO,
     DEBUG,
     WARN,
-    ERROR
+    ERROR;
+
+    companion object {
+        fun fromPriority(priority: Int): Level {
+            return when(priority) {
+                Log.INFO -> INFO
+                Log.DEBUG -> DEBUG
+                Log.WARN -> WARN
+                Log.ERROR -> ERROR
+                Log.VERBOSE -> VERBOSE
+                else -> VERBOSE
+            }
+        }
+    }
 }
 
 data class LogData(
@@ -88,6 +102,8 @@ object Corn {
         flush { disposables.clear() }
     }
 
+    @JvmStatic
+    @JvmOverloads
     fun flush(onComplete: (() -> Unit)? = null) {
         onComplete?.run {
             println("subscribe to flush completion event")
@@ -107,6 +123,7 @@ object Corn {
     }
 
     @JvmStatic
+    @JvmOverloads
     fun rotateLogs(forced: Boolean = false) {
         rotateLogs(logsDir, LOG_FILE_NAME, forced)
     }
@@ -147,6 +164,12 @@ object Corn {
 
         val log = LogData(level = level, tag = tag, message = msg, timestamp = time)
         logBuffer.onNext(log)
+    }
+
+    @JvmStatic
+    @JvmOverloads
+    fun log(priority: Int, tag: String, message: String, throwable: Throwable? = null) {
+        log(Level.fromPriority(priority), tag, message, throwable)
     }
 
     @JvmStatic
@@ -216,7 +239,9 @@ object Corn {
 
     }
 
-    fun clear(all: Boolean) {
+    @JvmStatic
+    @JvmOverloads
+    fun clear(all: Boolean = true) {
         val rootDir = File(logsDir)
         if (!rootDir.exists() && !rootDir.isDirectory) return
 
