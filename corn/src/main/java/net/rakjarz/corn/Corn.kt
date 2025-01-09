@@ -28,6 +28,10 @@ enum class Level {
     WARN,
     ERROR;
 
+    fun getCode(): String {
+        return "${toString()[0]}"
+    }
+
     companion object {
         fun fromPriority(priority: Int): Level {
             return when(priority) {
